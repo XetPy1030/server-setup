@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  portainer:
+    image: portainer/portainer-ce:lts
+    container_name: portainer
+    restart: unless-stopped
+    ports:
+      - "9000:9000"   # HTTP 端口（可选）
+      - "9443:9443"   # HTTPS 端口
+      - "8000:8000"   # 边缘代理端口
+    environment:
+      - TZ=Asia/Shanghai
+      - PORTAINER_EDGE=${PORTAINER_EDGE:-}  # 环境变量示例
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./portainer-data:/data  # 本地目录挂载
+      - ./certs:/certs  # 自定义证书（可选）
+    command:
+      - --ssl
+      - --sslcert /certs/portainer.crt
+      - --sslkey /certs/portainer.key
+    networks:
+      - portainer-network
+
+networks:
+  portainer-network:
+    driver: bridge

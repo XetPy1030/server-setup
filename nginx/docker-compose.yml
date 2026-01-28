@@ -1,0 +1,21 @@
+version: '3.8'
+services:
+  app:
+    image: 'jc21/nginx-proxy-manager:latest'
+    container_name: nginx-proxy-manager
+    restart: unless-stopped
+    ports:
+      # Публичные порты
+      - '80:80'    # HTTP
+      - '443:443'  # HTTPS
+      - '81:81'    # Админ-панель
+    volumes:
+      # Конфигурация и данные
+      - ./data:/data
+      - ./letsencrypt:/etc/letsencrypt
+    networks:
+      - web-network  # общая сеть для всех
+
+networks:
+  web-network:
+    external: true  # создаем отдельно
