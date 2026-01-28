@@ -1,0 +1,10 @@
+# docker-compose.yml вашего сервиса
+services:
+  webapp:
+    image: your-app
+    networks:
+      - web-network  # та же самая сеть!
+
+networks:
+  web-network:
+    external: true
