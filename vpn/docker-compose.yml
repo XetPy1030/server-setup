@@ -11,7 +11,8 @@ services:
       MAX_AGE: ${MAX_AGE:-15}
       UI_TRAFFIC_STATS: ${UI_TRAFFIC_STATS:-true}
       UI_CHART_TYPE: ${UI_CHART_TYPE:-3}
-      WG_ALLOWED_IPS: ${WG_ALLOWED_IPS}
+      WG_ALLOWED_IPS: ${WG_ALLOWED_IPS-0.0.0.0/0}
+      WG_PERSISTENT_KEEPALIVE: ${WG_PERSISTENT_KEEPALIVE:-25}
     volumes:
       - ./wireguard:/etc/wireguard
     ports:
