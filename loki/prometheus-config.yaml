@@ -25,6 +25,19 @@ scrape_configs:
     static_configs:
       - targets: ['node-exporter:9100']
 
+  # WG-EASY (targets configured in files)
+  - job_name: 'wg-easy'
+    file_sd_configs:
+      - files:
+          - /etc/prometheus/targets/*.yml
+        refresh_interval: 30s
+    metrics_path: '/metrics/prometheus'
+    scrape_interval: 30s
+    scrape_timeout: 5s
+    authorization:
+      type: Bearer
+      credentials_file: /etc/prometheus/secrets/wg-easy.token
+
 alerting:
   alertmanagers:
     - static_configs:

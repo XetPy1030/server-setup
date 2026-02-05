@@ -87,6 +87,8 @@ services:
       - "9090:9090"
     volumes:
       - ./prometheus-config.yaml:/etc/prometheus/prometheus.yml
+      - ./prometheus-targets:/etc/prometheus/targets
+      - ./prometheus-secrets:/etc/prometheus/secrets:ro
       - prometheus-storage:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
