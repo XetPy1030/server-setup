@@ -1,22 +1,26 @@
-volumes:
-  etc_wireguard:
-
 services:
   wg-easy:
-    #environment:
-    #  Optional:
-    #  - PORT=51821
-    #  - HOST=0.0.0.0
-    #  - INSECURE=false
-
     image: ghcr.io/wg-easy/wg-easy:15
     container_name: wg-easy
+    env_file:
+      - .env
+    environment:
+      INSECURE: true
+
+      INIT_USERNAME: ${INIT_USERNAME:-admin}
+      INIT_PASSWORD: ${INIT_PASSWORD:-Se!ureP%ssw}
+      INIT_HOST: ${INIT_HOST:-vpn.example.com}
+      INIT_PORT: ${INIT_PORT:-51820}
+      INIT_DNS: ${INIT_DNS:-1.1.1.1,8.8.8.8}
+      INIT_IPV4_CIDR: ${INIT_IPV4_CIDR:-10.8.0.0/24}
+      INIT_IPV6_CIDR: ${INIT_IPV6_CIDR:-2001:0DB8::/32}
+      INIT_ALLOWED_IPS: ${INIT_ALLOWED_IPS:-0.0.0.0/0,::/0}
     networks:
       wg:
         ipv4_address: 10.42.42.42
         ipv6_address: fdcc:ad94:bacf:61a3::2a
     volumes:
-      - etc_wireguard:/etc/wireguard
+      - ./wireguard:/etc/wireguard
       - /lib/modules:/lib/modules:ro
     ports:
       - "51820:51820/udp"
@@ -25,7 +29,6 @@ services:
     cap_add:
       - NET_ADMIN
       - SYS_MODULE
-      # - NET_RAW # ⚠️ Uncomment if using Podman
     sysctls:
       - net.ipv4.ip_forward=1
       - net.ipv4.conf.all.src_valid_mark=1
