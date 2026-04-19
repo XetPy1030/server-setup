@@ -86,6 +86,12 @@ XRAY_VMESS_AEAD_FORCED=false
    sudo ufw reload
    ```
 
+5. **Yes**
+   ```bash
+   sudo cp /etc/letsencrypt/live/vpn3.xetpy.ru/cert.pem cert/cert.pem
+   sudo cp /etc/letsencrypt/live/vpn3.xetpy.ru/privkey.pem cert/privkey.pem
+   ```
+
 ---
 
 ## 🌐 Настройка веб-панели (первичная)
