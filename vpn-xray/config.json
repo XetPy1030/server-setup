@@ -1,0 +1,58 @@
+{
+  "log": {
+    "loglevel": "warning",
+    "access": "/var/log/xray/access.log",
+    "error": "/var/log/xray/error.log"
+  },
+  "inbounds": [
+    {
+      "port": 443,
+      "protocol": "vless",
+      "settings": {
+        "clients": [
+          {
+            "id": "__XRAY_UUID__",
+            "flow": "",
+            "email": "user"
+          }
+        ],
+        "decryption": "none"
+      },
+      "streamSettings": {
+        "network": "ws",
+        "security": "tls",
+        "tlsSettings": {
+          "certificates": [
+            {
+              "certificateFile": "/etc/xray/certs/cert.pem",
+              "keyFile": "/etc/xray/certs/key.pem"
+            }
+          ],
+          "minVersion": "1.2",
+          "cipherSuites": "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384:TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384"
+        },
+        "wsSettings": {
+          "path": "__XRAY_WS_PATH__",
+          "headers": {
+            "Host": "__XRAY_DOMAIN__"
+          }
+        }
+      }
+    }
+  ],
+  "outbounds": [
+    {
+      "protocol": "freedom",
+      "tag": "direct"
+    }
+  ],
+  "routing": {
+    "rules": [
+      {
+        "type": "field",
+        "ip": ["geoip:private"],
+        "outboundTag": "direct"
+      }
+    ]
+  }
+}

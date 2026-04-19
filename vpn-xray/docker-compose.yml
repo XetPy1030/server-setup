@@ -1,0 +1,27 @@
+version: "3.8"
+
+services:
+  xray:
+    image: ghcr.io/xtls/xray-core:latest
+    container_name: xray-vpn
+    restart: unless-stopped
+    ports:
+      - "443:443/tcp"
+    volumes:
+      - ./config.json:/etc/xray/config.json:ro
+      - ./certs:/etc/xray/certs:ro
+    environment:
+      - TZ=Europe/Moscow
+    cap_add:
+      - NET_ADMIN
+    sysctls:
+      - net.ipv4.ip_forward=1
+      - net.ipv4.conf.all.rp_filter=0
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
