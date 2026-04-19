@@ -1,50 +1,41 @@
-Для условий РФ (DPI, блокировки по протоколам и SNI) оптимальным выбором **не-WireGuard** VPN является **Xray-core** с протоколом `VLESS + WebSocket + TLS`. 
-
-Почему это работает в России:
-- 🔒 **Полное шифрование**: TLS 1.3 + шифрование полезной нагрузки VLESS
-- 🌐 **Маскировка под HTTPS**: WebSocket-трафик на порту 443 неразличим для DPI для обычного веб-трафика
-- 🚫 **Не WireGuard**: обходит блокировки по статичным рукопожатиям WG
-- ⚡ **Активная разработка**: поддерживается сообществом, регулярно обновляется сигнатуры обхода
-
-Ниже готовый комплект файлов. Просто создайте папку, сохраните файлы и запустите.
+                                                                                                                                                                                                                            Вот **полный, готовый к запуску комплект** для 3X-UI. В России в 2026 году оптимально использовать протокол **VLESS + Reality** (не требует домена/сертификатов, маскируется под реальный HTTPS-трафик, устойчив к DPI). Конфигурация WebSocket+TLS тоже описана как fallback.
 
 ---
 
-### 📁 Структура проекта
+## 📁 Структура проекта
+
 ```
-vpn-xray/
+3x-ui-vpn/
 ├── docker-compose.yml
-├── .env
-├── config.json
-└── certs/          # сюда положите cert.pem и key.pem
+├── .env-example
+├── db/          # создастся автоматически
+└── cert/        # создастся автоматически (для TLS, если понадобится)
 ```
 
 ---
 
-### 📄 `docker-compose.yml`
+## 📄 `docker-compose.yml`
+
 ```yaml
 version: "3.8"
 
 services:
-  xray:
-    image: ghcr.io/xtls/xray-core:latest
-    container_name: xray-vpn
+  3x-ui:
+    image: ghcr.io/mhsanaei/3x-ui:latest
+    container_name: 3x-ui
     restart: unless-stopped
-    ports:
-      - "443:443/tcp"
+    network_mode: host  # Обязательно для корректной работы портов и Reality
+    env_file: .env
     volumes:
-      - ./config.json:/etc/xray/config.json:ro
-      - ./certs:/etc/xray/certs:ro
-    environment:
-      - TZ=Europe/Moscow
+      - ./db:/etc/x-ui/
+      - ./cert:/root/cert/
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
     cap_add:
       - NET_ADMIN
     sysctls:
       - net.ipv4.ip_forward=1
-      - net.ipv4.conf.all.rp_filter=0
-    dns:
-      - 8.8.8.8
-      - 1.1.1.1
+      - net.ipv4.tcp_congestion_control=bbr
     logging:
       driver: json-file
       options:
@@ -54,147 +45,190 @@ services:
 
 ---
 
-### 📄 `.env` (переименуйте из `.env-example`)
+## 📄 `.env-example` (переименуйте в `.env`)
+
 ```env
-# Уникальный идентификатор пользователя (сгенерируйте: uuidgen или openssl rand -hex 16 | sed 's/\(.\{8\}\)\(.\{4\}\)\(.\{4\}\)\(.\{4\}\)\(.\{12\}\)/\1-\2-\3-\4-\5/')
-XRAY_UUID=ваш-uuid-здесь
+# Часовой пояс сервера
+TZ=Europe/Moscow
 
-# Домен, на который выданы TLS-сертификаты (обязательно должен резолвиться на IP сервера)
-XRAY_DOMAIN=vpn.yourdomain.com
+# Порт веб-панели (по умолчанию 2053, смените на случайный >10000)
+PANEL_PORT=2053
 
-# Путь для WebSocket (можно оставить как есть)
-XRAY_WS_PATH=/xray
+# Ядро Xray (не менять)
+XRAY_VMESS_AEAD_FORCED=false
 ```
 
 ---
 
-### 📄 `config.json`
-```json
-{
-  "log": {
-    "loglevel": "warning",
-    "access": "/var/log/xray/access.log",
-    "error": "/var/log/xray/error.log"
-  },
-  "inbounds": [
-    {
-      "port": 443,
-      "protocol": "vless",
-      "settings": {
-        "clients": [
-          {
-            "id": "__XRAY_UUID__",
-            "flow": "",
-            "email": "user"
-          }
-        ],
-        "decryption": "none"
-      },
-      "streamSettings": {
-        "network": "ws",
-        "security": "tls",
-        "tlsSettings": {
-          "certificates": [
-            {
-              "certificateFile": "/etc/xray/certs/cert.pem",
-              "keyFile": "/etc/xray/certs/key.pem"
-            }
-          ],
-          "minVersion": "1.2",
-          "cipherSuites": "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384:TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384"
-        },
-        "wsSettings": {
-          "path": "__XRAY_WS_PATH__",
-          "headers": {
-            "Host": "__XRAY_DOMAIN__"
-          }
-        }
-      }
-    }
-  ],
-  "outbounds": [
-    {
-      "protocol": "freedom",
-      "tag": "direct"
-    }
-  ],
-  "routing": {
-    "rules": [
-      {
-        "type": "field",
-        "ip": ["geoip:private"],
-        "outboundTag": "direct"
-      }
-    ]
-  }
-}
-```
+## 🚀 Пошаговый запуск
 
----
-
-### 🛠 Инструкция по запуску
-
-1. **Создайте директорию и файлы**
+1. **Создайте папку и файлы**
    ```bash
-   mkdir -p vpn-xray/certs && cd vpn-xray
+   mkdir -p 3x-ui-vpn && cd 3x-ui-vpn
+   # Вставьте docker-compose.yml и .env (из .env-example)
    ```
 
-2. **Сгенерируйте UUID**
-   ```bash
-   uuidgen  # или используйте онлайн-генератор
-   ```
-   Вставьте его в `.env` вместо `ваш-uuid-здесь`.
-
-3. **Получите TLS-сертификаты** (обязательно для работы)
-   ```bash
-   # Пример с Let's Encrypt (требует домена,指向щего на ваш сервер)
-   certbot certonly --standalone -d vpn.yourdomain.com
-   sudo cp /etc/letsencrypt/live/vpn.yourdomain.com/fullchain.pem certs/cert.pem
-   sudo cp /etc/letsencrypt/live/vpn.yourdomain.com/privkey.pem certs/key.pem
-   ```
-   > ⚠️ Без валидного TLS-сертификата трафик не будет шифроваться корректно и может блокироваться DPI.
-
-4. **Подставьте переменные в config.json**
-   ```bash
-   sed -i "s/__XRAY_UUID__/$XRAY_UUID/g" config.json
-   sed -i "s/__XRAY_WS_PATH__/$XRAY_WS_PATH/g" config.json
-   sed -i "s/__XRAY_DOMAIN__/$XRAY_DOMAIN/g" config.json
-   ```
-
-5. **Запустите**
+2. **Запустите контейнер**
    ```bash
    docker compose up -d
    ```
 
-6. **Откройте порт в фаерволе**
+3. **Убедитесь, что работает**
    ```bash
-   sudo ufw allow 443/tcp
+   docker ps | grep 3x-ui
+   curl -s http://localhost:2053 | head -5
+   ```
+
+4. **Откройте порт в фаерволе**
+   ```bash
+   sudo ufw allow 443/tcp   # Для VPN трафика
+   sudo ufw allow 2053/tcp  # Для панели (временно, потом сменим)
    sudo ufw reload
    ```
 
 ---
 
-### 📱 Настройка клиента (V2RayNG / Nekoray / Streisand / Sing-box)
-Выберите тип протокола `VLESS` + `WebSocket` + `TLS`:
-| Параметр | Значение |
-|----------|----------|
-| Адрес | `ваш-домен.com` или IP сервера |
-| Порт | `443` |
-| ID | ваш UUID из `.env` |
-| Сеть | `ws` |
-| Путь WS | `/xray` |
-| Безопасность | `tls` |
-| Домен сервера (SNI) | `ваш-домен.com` |
+## 🌐 Настройка веб-панели (первичная)
 
-> ✅ Включите `Allow Insecure` только если используете самоподписанный сертификат (не рекомендуется для РФ).
+1. Откройте `http://<IP_ВАШЕГО_СЕРВЕРА>:2053`
+2. Войдите с `admin` / `admin` (при первом входе система попросит сменить логин/пароль)
+3. **Сразу смените порт панели**: `Панель` → `Настройки панели` → `Порт панели` → введите `15832` (или любой
+   случайный) → `Сохранить`
+4. Теперь панель доступна по `http://IP:15832`
+5. Закройте старый порт: `sudo ufw delete allow 2053/tcp`
 
 ---
 
-### 🇷🇺 Важные нюансы для России
-1. **Домен обязателен**: Бесплатные/публичные домены быстро попадают в реестры РКН. Используйте свой домен `.ru`/`.com`/`.net` и держите его на Cloudflare.
-2. **Cloudflare Proxy**: Включите `Proxy status: Proxied` в Cloudflare. Это скроет реальный IP сервера и добавит дополнительную обфускацию.
-3. **REALITY**: Если трафик всё ещё детектится, перейдите на протокол `VLESS + TCP + REALITY`. Он не требует сертификатов и обходит SNI-блокировки, но требует более сложной конфигурации.
-4. **Обновление**: Раз в месяц обновляйте образ: `docker compose pull && docker compose up -d`
-5. **Безопасность**: Никогда не публикуйте `.env` или `config.json` в публичных репозиториях.
+## ⚙️ Создание Inbound (VLESS + Reality)
 
-Эта связка шифрует весь трафик, маскируется под обычный HTTPS и активно используется для обхода DPI в РФ. При необходимости могу предоставить версию с `REALITY` или автоматическим выпуском сертификатов внутри контейнера.
+> 💡 **Почему Reality?** Не нужны домен, сертификаты, Cloudflare. Трафик выглядит как обычный HTTPS к `microsoft.com` или
+`google.com`. DPI не детектит.
+
+1. В панели: `Inbounds` → `+` (Добавить)
+2. Заполните:
+   | Поле | Значение |
+   |------|----------|
+   | `Протокол` | `VLESS` |
+   | `Порт` | `443` |
+   | `ID` | 📋 `Сгенерировать` |
+   | `Flow` | Оставьте пустым (или `xtls-rprx-vision` для Linux/Android) |
+   | `Транспорт` | `TCP` |
+   | `TLS` | `Reality` |
+   | `SNI` | `www.microsoft.com` (или `www.google.com`) |
+   | `Dest` | `www.microsoft.com:443` |
+   | `Private Key` | 📋 `Сгенерировать` |
+   | `Public Key` | Скопируйте после генерации (понадобится клиенту) |
+   | `Short Id` | 📋 `Сгенерировать` (или оставьте `*`) |
+   | `SpiderX` | `/` |
+
+3. Нажмите `Добавить` → `Сохранить`
+4. В списке появится ваш inbound. Нажмите `👁` (QR/Ссылка) → скопируйте `vless://...` или запишите параметры вручную.
+
+---
+
+## 📱 Настройка клиентов
+
+### 🔹 Android / Windows / iOS (Hiddify / v2rayNG / Streisand / Nekoray)
+
+| Параметр    | Значение                                  |
+|-------------|-------------------------------------------|
+| Протокол    | `VLESS`                                   |
+| Адрес       | `IP_вашего_сервера`                       |
+| Порт        | `443`                                     |
+| UUID        | Ваш `ID` из панели                        |
+| Flow        | (пусто или `xtls-rprx-vision`)            |
+| Security    | `Reality`                                 |
+| SNI         | `www.microsoft.com`                       |
+| PublicKey   | Скопированный из панели                   |
+| ShortId     | Скопированный из панели                   |
+| Fingerprint | `chrome` (обязательно для обхода JA3/JA4) |
+| Transport   | `TCP`                                     |
+
+> ✅ Включите `Allow Insecure` только если клиент ругается на сертификат Reality (обычно не требуется).
+
+---
+
+## 🛡 Безопасность и оптимизация для РФ
+
+### 1. Включите BBR (ускорение TCP)
+
+```bash
+echo "net.ipv4.tcp_congestion_control=bbr" | sudo tee -a /etc/sysctl.conf
+sudo sysctl -p
+```
+
+### 2. Закройте всё, кроме нужного
+
+```bash
+sudo ufw default deny incoming
+sudo ufw allow 22/tcp    # SSH (лучше сменить порт!)
+sudo ufw allow 443/tcp   # VPN
+sudo ufw allow 15832/tcp # Панель (по желанию, можно скрыть за IP-whitelist)
+sudo ufw enable
+```
+
+### 3. Авто-обновление контейнера
+
+```bash
+# Раз в месяц выполняйте:
+cd /путь/к/3x-ui-vpn && docker compose pull && docker compose up -d
+```
+
+### 4. Бэкап базы данных
+
+```bash
+# В панели: Настройки → Бэкап → Скачать
+# Или вручную:
+tar -czf xui-backup-$(date +%F).tar.gz ./db
+```
+
+---
+
+## 🔄 Альтернатива: VLESS + WebSocket + TLS (если нужен домен)
+
+Если вы хотите использовать свой домен и Cloudflare:
+
+1. В панели создайте inbound с `TLS` вместо `Reality`
+2. `SNI` = ваш домен
+3. `Порт` = `443`
+4. `Транспорт` = `WebSocket` → `Path` = `/xray`
+5. Загрузите `cert.pem` и `key.pem` в папку `./cert/` контейнера
+6. В клиенте укажите `SNI = ваш_домен`, `Security = TLS`, `Path = /xray`
+
+> ⚠️ В РФ TLS+WS часто детектится по SNI и поведению заголовков. Reality стабильнее.
+
+---
+
+## 🆘 Диагностика проблем
+
+```bash
+# Логи панели
+docker logs 3x-ui
+
+# Логи ядра Xray
+docker exec 3x-ui cat /etc/x-ui/xray.log | tail -20
+
+# Проверка порта 443
+sudo ss -tlnp | grep 443
+
+# Тест Reality-рукопожатия (с клиента)
+openssl s_client -connect IP_СЕРВЕРА:443 -servername www.microsoft.com
+```
+
+| Ошибка                 | Решение                                                      |
+|------------------------|--------------------------------------------------------------|
+| `connection refused`   | Откройте порт 443 в `ufw` и у хостинг-провайдера             |
+| `invalid reality key`  | Скопируйте `PublicKey` и `ShortId` точно из панели           |
+| `tls handshake failed` | Убедитесь, что `Fingerprint = chrome` в клиенте              |
+| Панель не открывается  | Проверьте `docker logs 3x-ui`, смените порт, проверьте `ufw` |
+
+---
+
+Этот комплект **полностью автономен**, не требует внешних скриптов установки и работает из коробки. Если нужно добавить:
+
+- Автоматический ротационный `ShortId`
+- Интеграцию с Telegram-ботом для уведомлений
+- Reverse Proxy для панели с Cloudflare
+- Скрипт мониторинга блокировок
+
+Напишите — дополню под ваш сценарий. 🛡️
