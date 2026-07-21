@@ -238,3 +238,10 @@ openssl s_client -connect IP_СЕРВЕРА:443 -servername www.microsoft.com
 - Скрипт мониторинга блокировок
 
 Напишите — дополню под ваш сценарий. 🛡️
+
+
+# Установка certbot (для Ubuntu/Debian)
+apt update && apt install certbot -y
+
+# Генерация реального сертификата и сохранение по нужным путям
+certbot certonly --standalone -d ваш_домен.com --cert-path /root/cert/cert.pem --key-path /root/cert/privkey.pem
