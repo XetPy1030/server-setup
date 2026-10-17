@@ -1,14 +1,14 @@
 services:
   app:
-    image: 'jc21/nginx-proxy-manager:latest'
+    image: 'jc21/nginx-proxy-manager:2.13.6'
     container_name: nginx-proxy-manager
     restart: unless-stopped
     ports:
       # Публичные порты
       - '80:80'    # HTTP
       - '443:443'  # HTTPS
-      - '81:81'    # Админ-панель
-      - '6432:6432'
+      # Админ-панель: снаружи через npm.xetpy.ru, порт — только для SSH-туннеля
+      - '127.0.0.1:81:81'
     volumes:
       # Конфигурация и данные
       - ./data:/data

@@ -1,0 +1,11 @@
+.DS_Store
+.env
+
+# Данные и секреты, которые живут только на сервере
+nginx/data/
+nginx/letsencrypt/
+portainer/data/
+loki/prometheus-secrets/*.token
+vpn/confs/
+vpn/wg_show.txt
+vpn-xray/logs.txt

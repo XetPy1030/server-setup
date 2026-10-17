@@ -1,9 +1,9 @@
 services:
   loki:
-    image: grafana/loki:latest
+    image: grafana/loki:3.6.4
     container_name: loki
     ports:
-      - "3100:3100"
+      - "127.0.0.1:3100:3100"
     command: -config.file=/etc/loki/local-config.yaml
     volumes:
       - ./loki-config.yaml:/etc/loki/local-config.yaml
@@ -21,13 +21,14 @@ services:
           memory: 1G
 
   promtail:
-    image: grafana/promtail:latest
+    image: grafana/promtail:3.6.4
     container_name: promtail
     volumes:
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
       - /var/run/docker.sock:/var/run/docker.sock
       - ./promtail-config.yaml:/etc/promtail/config.yml
       - ./logs:/var/log/applogs:ro
+      - promtail-positions:/var/lib/promtail
     command: -config.file=/etc/promtail/config.yml
     environment:
       - TZ=Europe/Moscow
@@ -38,18 +39,22 @@ services:
       - monitoring-net
 
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana:12.3.2
     container_name: grafana
     user: "472:472"
     ports:
-      - "8512:3000"
+      # Снаружи доступна через NPM (grafana.xetpy.ru), порт — только для SSH-туннеля
+      - "127.0.0.1:8512:3000"
     volumes:
       - grafana-storage:/var/lib/grafana
       - ./grafana-provisioning:/etc/grafana/provisioning
       - ./grafana-dashboards:/var/lib/grafana/dashboards
     environment:
       - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=securepassword
+      # Применяется только при первом запуске; дальше пароль меняется через
+      # `grafana cli admin reset-admin-password`
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:?set GRAFANA_ADMIN_PASSWORD in loki/.env}
+      - GF_SERVER_ROOT_URL=https://grafana.xetpy.ru
       - GF_USERS_ALLOW_SIGN_UP=false
       - TZ=Europe/Moscow
     restart: unless-stopped
@@ -57,6 +62,7 @@ services:
       - loki
     networks:
       - monitoring-net
+      - web-network
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:3000/api/health || exit 1"]
       interval: 30s
@@ -64,10 +70,10 @@ services:
       retries: 3
 
   node-exporter:
-    image: prom/node-exporter:latest
+    image: prom/node-exporter:v1.10.2
     container_name: node-exporter
     ports:
-      - "9100:9100"
+      - "127.0.0.1:9100:9100"
     volumes:
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
@@ -81,10 +87,10 @@ services:
       - monitoring-net
 
   prometheus:
-    image: prom/prometheus:latest
+    image: prom/prometheus:v3.9.1
     restart: always
     ports:
-      - "9090:9090"
+      - "127.0.0.1:9090:9090"
     volumes:
       - ./prometheus-config.yaml:/etc/prometheus/prometheus.yml
       - ./prometheus-targets:/etc/prometheus/targets
@@ -104,6 +110,7 @@ volumes:
   loki-data:
   grafana-storage:
   prometheus-storage:
+  promtail-positions:
 
 networks:
   monitoring-net:
@@ -111,3 +118,5 @@ networks:
     ipam:
       config:
         - subnet: 172.20.0.0/24
+  web-network:
+    external: true

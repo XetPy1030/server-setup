@@ -1,12 +1,18 @@
 services:
   portainer:
-    image: portainer/portainer-ce:lts
+    image: portainer/portainer-ce:2.33.6
     container_name: portainer
     restart: unless-stopped
     ports:
-      - "8000:8000"
-      - "9443:9443"
+      # Снаружи через NPM (portainer.xetpy.ru → http://portainer:9000), порт — только для SSH-туннеля
+      - "127.0.0.1:9443:9443"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./data:/data
     command: -H unix:///var/run/docker.sock
+    networks:
+      - web-network
+
+networks:
+  web-network:
+    external: true
