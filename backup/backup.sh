@@ -12,7 +12,7 @@ docker build -q -t server-setup-backup . >/dev/null
 
 restic() {
     docker run --rm -i --hostname web \
-        -e RESTIC_PASSWORD -e RESTIC_REPOSITORY=rclone:yadisk:server-backups/web \
+        -e RESTIC_PASSWORD -e RESTIC_REPOSITORY=rclone:yadisk:backup/servers/web \
         -e RCLONE_CONFIG=/rclone/rclone.conf -v "$here/rclone:/rclone" \
         -v restic-cache:/root/.cache/restic \
         -v /root/server-setup:/root/server-setup:ro \
