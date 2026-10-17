@@ -245,3 +245,9 @@ apt update && apt install certbot -y
 
 # Генерация реального сертификата и сохранение по нужным путям
 certbot certonly --standalone -d ваш_домен.com --cert-path /root/cert/cert.pem --key-path /root/cert/privkey.pem
+
+
+```bash
+sudo cp /etc/letsencrypt/live/vpn3.xetpy.ru/fullchain.pem cert/cert.pem
+sudo cp /etc/letsencrypt/live/vpn3.xetpy.ru/privkey.pem cert/privkey.pem
+```
