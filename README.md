@@ -25,11 +25,11 @@ Host web
 | web (xetpy.ru, РФ) | [nginx](nginx/) | Nginx Proxy Manager | 80, 443; админка npm.xetpy.ru | 81 |
 | | [portainer](portainer/) | Portainer | portainer.xetpy.ru | 9443 |
 | | [monitoring](monitoring/) | Grafana, Loki, Promtail, Prometheus, node-exporter | grafana.xetpy.ru | 8512, 3100, 9090, 9100 |
-| vpn (vpn.xetpy.ru) | [vpn](vpn/) | WireGuard (wg-easy) | 51820/udp, панель 51821 | |
-| vpn3 (vpn3.xetpy.ru) | [vpn-xray](vpn-xray/) | 3X-UI, VLESS + Reality | 443, панель | |
+| — | [vpn](vpn/) | WireGuard (wg-easy) | 51820/udp, панель 51821 | |
+| — | [vpn-xray](vpn-xray/) | 3X-UI, VLESS + Reality | 443, панель | |
 | — | [mtproto](mtproto/) | Telegram MTProto proxy | 443 | |
 
-nginx, vpn-xray и mtproto все хотят 443 — на одном сервере уживается только один из них.
+vpn, vpn-xray и mtproto сейчас нигде не развёрнуты — конфиги лежат на будущее. Под каждый VPN нужен свой сервер: nginx, vpn-xray и mtproto все хотят 443.
 
 Сайты живут отдельными репами в `/root/projects/<имя>` на web и подключаются к NPM через общую сеть `web-network` — см. [nginx/template-compose.yml](nginx/template-compose.yml).
 
