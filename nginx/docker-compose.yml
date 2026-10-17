@@ -15,6 +15,14 @@ services:
       - ./letsencrypt:/etc/letsencrypt
     networks:
       - web-network  # общая сеть для всех
+    healthcheck:
+      # Скрипт из образа: проверяет API админки на 127.0.0.1:81
+      test: ["CMD", "/usr/bin/check-health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+      start_interval: 5s
 
 networks:
   web-network:

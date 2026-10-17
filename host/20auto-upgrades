@@ -1,0 +1,4 @@
+// Раз в сутки обновлять списки пакетов и ставить обновления безопасности.
+// Что именно ставится — /etc/apt/apt.conf.d/50unattended-upgrades (по умолчанию только security).
+APT::Periodic::Update-Package-Lists "1";
+APT::Periodic::Unattended-Upgrade "1";

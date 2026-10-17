@@ -10,6 +10,8 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./data:/data
     command: -H unix:///var/run/docker.sock
+    # healthcheck не поставить: в образе нет ни shell, ни curl/wget.
+    # Доступность снаружи проверяет blackbox-exporter (docs/alerts.md).
     networks:
       - web-network
 
