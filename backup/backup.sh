@@ -2,6 +2,7 @@
 # Бэкап web → Яндекс Диск (docs/backup.md). Каждую ночь запускается systemd-таймером
 # (backup/install.sh); руками — backup/backup.sh. Любые аргументы передаются restic:
 #   backup/backup.sh snapshots      список снимков
+# Источники смонтированы только на чтение; restore — в /restore (на хосте /root/restore).
 set -eu
 cd "$(dirname "$0")"
 here=$(pwd)
@@ -17,6 +18,7 @@ restic() {
         -v /root/server-setup:/root/server-setup:ro \
         -v /root/projects:/root/projects:ro \
         -v /var/lib/docker/volumes:/var/lib/docker/volumes:ro \
+        -v /root/restore:/restore \
         server-setup-backup "$@"
 }
 
