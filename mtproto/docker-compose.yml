@@ -1,6 +1,6 @@
 services:
   mtproto:
-    image: telegrammessenger/proxy:latest
+    image: telegrammessenger/proxy:${PROXY_TAG:-latest}
     container_name: mtproto
     restart: unless-stopped
     ports:

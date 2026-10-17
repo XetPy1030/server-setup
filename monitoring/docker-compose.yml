@@ -1,3 +1,7 @@
+# Папка раньше называлась loki/. Имя проекта оставлено старым, иначе тома
+# loki_grafana-storage, loki_prometheus-storage и т.д. создадутся заново пустыми.
+name: loki
+
 services:
   loki:
     image: grafana/loki:3.6.4
@@ -53,7 +57,7 @@ services:
       - GF_SECURITY_ADMIN_USER=admin
       # Применяется только при первом запуске; дальше пароль меняется через
       # `grafana cli admin reset-admin-password`
-      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:?set GRAFANA_ADMIN_PASSWORD in loki/.env}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:?set GRAFANA_ADMIN_PASSWORD in monitoring/.env}
       - GF_SERVER_ROOT_URL=https://grafana.xetpy.ru
       - GF_USERS_ALLOW_SIGN_UP=false
       - TZ=Europe/Moscow

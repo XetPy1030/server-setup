@@ -5,7 +5,14 @@
 nginx/data/
 nginx/letsencrypt/
 portainer/data/
-loki/prometheus-secrets/*.token
+monitoring/logs/
+monitoring/prometheus-secrets/*.token
+vpn/wireguard/
+vpn-xray/db/
+vpn-xray/cert/
+
+# Локальный мусор на Mac
 vpn/confs/
 vpn/wg_show.txt
 vpn-xray/logs.txt
+local-artifacts/
