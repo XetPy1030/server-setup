@@ -28,7 +28,8 @@ Host web
 | — | [vpn](vpn/) | WireGuard (wg-easy) | 51820/udp, панель 51821 | |
 | — | [vpn-xray](vpn-xray/) | 3X-UI, VLESS + Reality | 443, панель | |
 | mtproto | [mtproto](mtproto/) | Telegram MTProto proxy, fake TLS | 443 | |
-| | [watchdog](watchdog/) | обратная проверка: живы ли сайты web → Telegram | | |
+| | [watchdog](watchdog/) | обратная проверка: живы ли сайты web → Telegram и почта | | |
+| | [host-metrics](host-metrics/) | node-exporter и состояние контейнеров для Prometheus на web | | 9100 |
 
 vpn и vpn-xray сейчас нигде не развёрнуты — конфиги лежат на будущее. Под каждый VPN нужен свой сервер: nginx, vpn-xray и mtproto все хотят 443.
 
