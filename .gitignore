@@ -6,7 +6,11 @@ nginx/data/
 nginx/letsencrypt/
 portainer/data/
 monitoring/logs/
-monitoring/prometheus-secrets/*.token
+monitoring/tg-relay-secrets/
+monitoring/prometheus-targets/mtproto.yml
+monitoring/node-exporter-textfile/
+backup/staging/
+backup/rclone/
 vpn/wireguard/
 vpn-xray/db/
 vpn-xray/cert/

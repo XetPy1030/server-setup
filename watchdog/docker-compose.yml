@@ -1,0 +1,19 @@
+# Обратная проверка: mtproto раз в минуту смотрит, живы ли сайты web, и пишет в Telegram.
+# Если ляжет весь web, его собственный Alertmanager замолчит вместе с ним (docs/alerts.md).
+# После правки watch.sh на сервере: docker compose restart watchdog.
+services:
+  watchdog:
+    image: curlimages/curl:8.22.0
+    container_name: watchdog
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "/watch.sh"]
+    volumes:
+      - ./watch.sh:/watch.sh:ro
+    environment:
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:?set TELEGRAM_BOT_TOKEN in watchdog/.env}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:?set TELEGRAM_CHAT_ID in watchdog/.env}
+      - WATCH_URLS=https://obsidiantime.ru/ https://doubleb-shop.ru/ https://mendal-uve.ru/ https://grafana.xetpy.ru/api/health
+    deploy:
+      resources:
+        limits:
+          memory: 32M

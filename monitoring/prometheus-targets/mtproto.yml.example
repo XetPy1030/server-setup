@@ -1,0 +1,4 @@
+# Скопировать в mtproto.yml (он в .gitignore) и вписать IP сервера mtproto.
+# Домен не подходит: mtproto.ru смотрит на Cloudflare, а не на сервер прокси.
+- targets:
+    - 203.0.113.10:443

@@ -13,4 +13,6 @@ for s in "$@"; do
         docker network inspect web-network >/dev/null 2>&1 || docker network create web-network
     fi
     (cd "$s" && docker compose up -d --remove-orphans --wait --wait-timeout 180)
+    # Правка примонтированных конфигов контейнер не пересоздаёт — reload.sh велит их перечитать
+    if [ -x "$s/reload.sh" ]; then "$s/reload.sh"; fi
 done

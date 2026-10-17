@@ -1,0 +1,10 @@
+[Unit]
+Description=Бэкап web на Яндекс Диск (server-setup/backup)
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/root/server-setup/backup/backup.sh
+Nice=10
+IOSchedulingClass=idle

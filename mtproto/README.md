@@ -1,6 +1,8 @@
 # mtproto
 
-Telegram MTProto proxy на хосте `mtproto` (mtproto.ru), режим fake TLS (секрет `ee…`), порт 443.
+Telegram MTProto proxy на хосте `mtproto`, режим fake TLS (секрет `ee…`), порт 443.
+
+Клиенты подключаются по IP (поле `server=` в ссылке). Домен mtproto.ru смотрит на Cloudflare, а не на этот сервер, поэтому проверять прокси и ходить на сервер — только по IP (он в `~/.ssh/config` и в `.env` на web, не в репе).
 
 ## Работа
 

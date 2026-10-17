@@ -1,43 +1,91 @@
 # Оповещения
 
-Статус: **план** (этап 3 в [roadmap.md](roadmap.md)).
+Работают с 2026-10-17 (этап 3 в [roadmap.md](roadmap.md)). Каналы: Telegram-бот и почта mail.ru. Токен, chat id и адреса — в `monitoring/.env` на web.
 
 ## Схема
 
 ```
 web (РФ)
   blackbox-exporter ─┐
-  node-exporter ─────┼─▶ Prometheus ──правила──▶ Alertmanager ─┬─▶ почта (smtp.mail.ru)
-  бэкап (метрика) ───┘                                         └─▶ tg-relay ══ssh══▶ mtproto ──▶ api.telegram.org
+  node-exporter ─────┼─▶ Prometheus ──правила──▶ Alertmanager ─┬─▶ почта (smtp.mail.ru:587)
+  alertmanager ──────┘                                         └─▶ tg-relay ══ssh══▶ mtproto ──▶ api.telegram.org
 
-mtproto (Telegram доступен)
-  cron раз в 5 минут: живы ли сайты web ──▶ api.telegram.org напрямую
+mtproto
+  watchdog: раз в минуту проверяет сайты web ──▶ api.telegram.org напрямую
 ```
 
-- **Telegram через mtproto.** С web `api.telegram.org` не открывается, с mtproto открывается. `tg-relay` — контейнер в `monitoring/` с `ssh -D` (SOCKS) на mtproto под отдельным пользователем. В его `authorized_keys` стоит `restrict,port-forwarding,permitopen="api.telegram.org:443"` — ничего, кроме соединения с Telegram, этот ключ не умеет. Новых открытых портов нет, Alertmanager ходит в Telegram через `proxy_url: socks5://tg-relay:1080`.
-- **Почта — второй канал.** Если лёг mtproto, туннель рвётся и Telegram с web молчит. Письмо через smtp.mail.ru (с web доступен) дойдёт.
-- **Обратная проверка.** Если ляжет весь web, вместе с ним ляжет и Alertmanager. Поэтому mtproto сам раз в 5 минут проверяет сайты web и пишет в Telegram напрямую.
-- **Alertmanager, а не алерты Grafana:** правила лежат в git рядом с конфигом Prometheus, у получателя Telegram есть явный `proxy_url`.
+- **Telegram через mtproto.** С web `api.telegram.org` не открывается, с mtproto открывается. `tg-relay` держит `ssh -D` (SOCKS) до mtproto, Alertmanager ходит через него (`proxy_url: socks5://tg-relay:1080`). Новых открытых портов нет.
+- **Почта — второй канал.** Если лёг mtproto, туннель рвётся и Telegram с web молчит, а письмо дойдёт.
+- **Обратная проверка.** Если ляжет весь web, вместе с ним ляжет и Alertmanager. Поэтому `watchdog` на mtproto сам проверяет web и пишет в Telegram.
+- **Alertmanager, а не алерты Grafana:** правила лежат в git, у Telegram-получателя есть явный прокси.
 
-## Что проверяем
+## Алерты
 
-| Алерт | Условие | Каналы |
-|-------|---------|--------|
-| Сайт не отвечает | blackbox `http_2xx` неуспешен 2 минуты — для каждого включённого хоста NPM | Telegram, почта |
-| Сертификат скоро истекает | осталось меньше 14 дней | Telegram, почта |
-| mtproto недоступен из РФ | blackbox `tcp_connect` к mtproto.ru:443 с web неуспешен 5 минут | почта (Telegram мог лечь вместе с mtproto) |
-| Мало места на диске | свободно меньше 15% | Telegram, почта |
-| Мало памяти | доступно меньше 10% в течение 10 минут | Telegram, почта |
-| Цель Prometheus не отвечает | `up == 0` 5 минут | Telegram, почта |
-| Нет свежего бэкапа | последний успешный старше 26 часов ([backup.md](backup.md)) | Telegram, почта |
-| web недоступен | проверка с mtproto | Telegram |
+Все алерты web уходят в оба канала. Пока не прошло — повтор раз в 6 часов; когда прошло — тоже приходит сообщение.
 
-Список сайтов для blackbox — в `monitoring/` рядом с конфигом Prometheus, обновляется при добавлении хоста в NPM.
+| Алерт | Когда срабатывает |
+|-------|-------------------|
+| SiteDown | сайт из `prometheus-targets/sites.yml` 2 минуты не отвечает 2xx |
+| CertExpiresSoon | до конца сертификата меньше 14 дней (держится час) |
+| MtprotoUnreachable | порт 443 прокси 5 минут не принимает соединения с web |
+| TelegramRelayDown | туннель до Telegram не поднят 5 минут — уведомления идут только на почту |
+| NotificationsFailing | Alertmanager не смог отправить уведомление за последние 15 минут |
+| TargetDown | Prometheus 5 минут не может опросить цель. Если это blackbox — проверки сайтов тоже не работают |
+| DiskSpaceLow | на web свободно меньше 15% диска 10 минут |
+| MemoryLow | на web свободно меньше 10% памяти 10 минут |
+| watchdog (с mtproto) | адрес web не ответил 3 проверки подряд (~3 минуты), и когда ответил снова |
 
-## Что нужно от тебя
+## Где что лежит
 
-1. В Telegram: @BotFather → `/newbot` → токен бота.
-2. Написать боту любое сообщение (или добавить его в группу) — по этому узнаем chat id.
-3. Почта: в настройках mail.ru → «Безопасность» → «Пароли для внешних приложений» создать пароль для SMTP. И адрес, куда слать — можно тот же ящик.
+| Файл | Что |
+|------|-----|
+| `monitoring/prometheus-rules/alerts.yaml` | правила алертов и тексты |
+| `monitoring/prometheus-targets/sites.yml` | сайты для проверки. Включил хост в NPM — добавь строку и `sv web deploy` |
+| `monitoring/alertmanager.yml` | куда и как слать; `${…}` подставляются из `monitoring/.env` |
+| `monitoring/blackbox.yml` | модули проверок (HTTP, TCP) |
+| `monitoring/tg-relay/` | образ туннеля (alpine + openssh-client) |
+| `watchdog/` | обратная проверка на mtproto, список адресов — в его `docker-compose.yml` |
 
-Токен бота, пароль приложения и адреса лежат только на сервере (`monitoring/alertmanager-secrets/`, в `.gitignore`). Удобнее всего положить их туда самому через `sv web`, чтобы они не проходили через чат.
+Только на серверах (в `.gitignore`):
+
+- web: `monitoring/.env`, `monitoring/prometheus-targets/mtproto.yml` (IP прокси), `monitoring/tg-relay-secrets/` (ключ и known_hosts туннеля);
+- mtproto: `watchdog/.env`.
+
+## Правки
+
+- `sv web deploy` после `docker compose up` запускает `monitoring/reload.sh`: Prometheus проверяет и перечитывает конфиг и правила, blackbox перечитывает модули, Alertmanager перезапускается (его конфиг собирается из шаблона при старте).
+- Loki, Promtail и Grafana `reload.sh` не трогает — после правки их конфигов на сервере `docker compose restart <сервис>`.
+- `watchdog/watch.sh` — после правки на mtproto `docker compose restart watchdog`.
+- Если mtproto лежит, `tg-relay` не станет healthy и `sv web deploy` закончится ошибкой на monitoring. Остальные сервисы к этому моменту уже подняты.
+
+## Проверить, что доходит
+
+```sh
+sv web
+docker exec alertmanager amtool --alertmanager.url=http://localhost:9093 alert add \
+    alertname=Test --annotation=summary="Проверка оповещений" \
+    --end="$(date -u -d '+2 min' +%Y-%m-%dT%H:%M:%SZ)"
+```
+
+Через ~30 секунд придёт 🔴 в Telegram и письмо, через пару минут — ✅. Если нет: `docker logs alertmanager` и `docker logs tg-relay`.
+
+## Туннель до Telegram: как настроен
+
+На mtproto — пользователь `tgrelay` без shell и пароля. В его `authorized_keys` ключ web ограничен: `restrict,port-forwarding,permitopen="api.telegram.org:443"`. Войти в shell или открыть соединение куда-то ещё этим ключом нельзя.
+
+Повторить на новых серверах:
+
+```sh
+# web
+d=~/server-setup/monitoring/tg-relay-secrets
+install -d -m700 $d && ssh-keygen -q -t ed25519 -N "" -C tg-relay@web -f $d/id_ed25519
+ssh-keyscan -t ed25519 <IP mtproto> >$d/known_hosts   # отпечаток сверить с ~/.ssh/known_hosts на Mac
+chmod 600 $d/*
+
+# mtproto
+useradd --system --create-home --home-dir /var/lib/tgrelay --shell /usr/sbin/nologin tgrelay
+usermod -p '*' tgrelay
+install -d -m700 -o tgrelay -g tgrelay /var/lib/tgrelay/.ssh
+echo 'restrict,port-forwarding,permitopen="api.telegram.org:443" <id_ed25519.pub с web>' >/var/lib/tgrelay/.ssh/authorized_keys
+chown tgrelay: /var/lib/tgrelay/.ssh/authorized_keys && chmod 600 /var/lib/tgrelay/.ssh/authorized_keys
+```

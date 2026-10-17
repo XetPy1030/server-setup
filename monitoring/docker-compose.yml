@@ -82,10 +82,13 @@ services:
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
       - /:/rootfs:ro
+      # backup/backup.sh пишет сюда время последнего успешного бэкапа
+      - ./node-exporter-textfile:/textfile:ro
     command:
       - '--path.procfs=/host/proc'
       - '--path.sysfs=/host/sys'
       - '--collector.filesystem.ignored-mount-points=^/(sys|proc|dev|host|etc)($$|/)'
+      - '--collector.textfile.directory=/textfile'
     restart: unless-stopped
     networks:
       - monitoring-net
@@ -98,7 +101,7 @@ services:
     volumes:
       - ./prometheus-config.yaml:/etc/prometheus/prometheus.yml
       - ./prometheus-targets:/etc/prometheus/targets
-      - ./prometheus-secrets:/etc/prometheus/secrets:ro
+      - ./prometheus-rules:/etc/prometheus/rules:ro
       - prometheus-storage:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
@@ -117,11 +120,84 @@ services:
       start_period: 60s
       start_interval: 5s
 
+  # Проверки сайтов по HTTPS и портов (prometheus-targets/), docs/alerts.md
+  blackbox-exporter:
+    image: prom/blackbox-exporter:v0.28.0
+    container_name: blackbox-exporter
+    restart: unless-stopped
+    command: --config.file=/etc/blackbox/blackbox.yml
+    volumes:
+      - ./blackbox.yml:/etc/blackbox/blackbox.yml:ro
+    networks:
+      - monitoring-net
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9115/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+      start_interval: 2s
+
+  alertmanager:
+    image: prom/alertmanager:v0.34.1
+    container_name: alertmanager
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:9093:9093"
+    # Alertmanager не подставляет переменные окружения в конфиг — это делает entrypoint
+    entrypoint: ["/bin/sh", "/etc/alertmanager/entrypoint.sh"]
+    environment:
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:?set TELEGRAM_BOT_TOKEN in monitoring/.env}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:?set TELEGRAM_CHAT_ID in monitoring/.env}
+      - SMTP_USER=${SMTP_USER:?set SMTP_USER in monitoring/.env}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:?set SMTP_PASSWORD in monitoring/.env}
+      - ALERT_EMAIL_TO=${ALERT_EMAIL_TO:?set ALERT_EMAIL_TO in monitoring/.env}
+    volumes:
+      - ./alertmanager.yml:/etc/alertmanager/alertmanager.tmpl.yml:ro
+      - ./alertmanager-entrypoint.sh:/etc/alertmanager/entrypoint.sh:ro
+      - alertmanager-data:/alertmanager
+    depends_on:
+      - tg-relay
+    networks:
+      - monitoring-net
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9093/-/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+      start_interval: 2s
+
+  # SOCKS-прокси до api.telegram.org: ssh на сервер mtproto, с web Telegram не открывается.
+  # Ключ и known_hosts — в tg-relay-secrets/, только на сервере. На mtproto ключ ограничен
+  # в authorized_keys пользователя tgrelay: только соединения с api.telegram.org:443.
+  tg-relay:
+    build: ./tg-relay
+    container_name: tg-relay
+    restart: unless-stopped
+    command: >-
+      ssh -N -D 0.0.0.0:1080
+      -i /keys/id_ed25519 -o UserKnownHostsFile=/keys/known_hosts -o StrictHostKeyChecking=yes
+      -o BatchMode=yes -o ExitOnForwardFailure=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=3
+      tgrelay@${TG_RELAY_HOST:?set TG_RELAY_HOST in monitoring/.env}
+    volumes:
+      - ./tg-relay-secrets:/keys:ro
+    networks:
+      - monitoring-net
+    healthcheck:
+      test: ["CMD", "nc", "-z", "127.0.0.1", "1080"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+      start_interval: 2s
+
 volumes:
   loki-data:
   grafana-storage:
   prometheus-storage:
   promtail-positions:
+  alertmanager-data:
 
 networks:
   monitoring-net:

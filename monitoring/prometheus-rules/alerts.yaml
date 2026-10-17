@@ -1,0 +1,62 @@
+# Алерты. Тексты (summary) уходят в Telegram и на почту — см. ../alertmanager.yml.
+groups:
+  - name: sites
+    rules:
+      - alert: SiteDown
+        expr: probe_success{job="sites"} == 0
+        for: 2m
+        annotations:
+          summary: '{{ $labels.instance }} не отвечает'
+
+      - alert: CertExpiresSoon
+        expr: probe_ssl_earliest_cert_expiry{job="sites"} - time() < 14 * 86400
+        for: 1h
+        annotations:
+          summary: 'Сертификат {{ $labels.instance }} истекает через {{ $value | humanizeDuration }}'
+
+      - alert: MtprotoUnreachable
+        expr: probe_success{job="mtproto"} == 0
+        for: 5m
+        annotations:
+          summary: 'Прокси mtproto не принимает соединения (проверка с web). Telegram-уведомления тоже могут не доходить'
+
+  - name: alerting
+    rules:
+      - alert: TelegramRelayDown
+        expr: probe_success{job="tg-relay"} == 0
+        for: 5m
+        annotations:
+          summary: 'Нет ssh-туннеля до Telegram через mtproto — уведомления идут только на почту'
+
+      - alert: NotificationsFailing
+        expr: increase(alertmanager_notifications_failed_total[15m]) > 0
+        annotations:
+          summary: 'Не доходят уведомления через {{ $labels.integration }} — смотри docker logs alertmanager'
+
+  - name: backup
+    rules:
+      - alert: BackupStale
+        expr: time() - backup_last_success_timestamp_seconds > 26 * 3600 or absent(backup_last_success_timestamp_seconds)
+        for: 30m
+        annotations:
+          summary: 'Последний успешный бэкап web — больше 26 часов назад. На web: systemctl status backup.service'
+
+  - name: web
+    rules:
+      - alert: TargetDown
+        expr: up == 0
+        for: 5m
+        annotations:
+          summary: 'Prometheus не может опросить {{ $labels.job }} ({{ $labels.instance }})'
+
+      - alert: DiskSpaceLow
+        expr: node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"} < 0.15
+        for: 10m
+        annotations:
+          summary: 'web: на диске свободно {{ $value | humanizePercentage }}'
+
+      - alert: MemoryLow
+        expr: node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes < 0.10
+        for: 10m
+        annotations:
+          summary: 'web: свободно {{ $value | humanizePercentage }} памяти'

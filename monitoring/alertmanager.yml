@@ -1,0 +1,33 @@
+# ${ИМЯ} подставляются из monitoring/.env при старте контейнера (alertmanager-entrypoint.sh).
+global:
+  smtp_smarthost: smtp.mail.ru:587
+  smtp_from: '${SMTP_USER}'
+  smtp_auth_username: '${SMTP_USER}'
+  smtp_auth_password: '${SMTP_PASSWORD}'
+
+route:
+  receiver: telegram-and-email
+  group_by: [alertname]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 6h
+
+receivers:
+  - name: telegram-and-email
+    telegram_configs:
+      - bot_token: '${TELEGRAM_BOT_TOKEN}'
+        chat_id: ${TELEGRAM_CHAT_ID}
+        parse_mode: HTML
+        message: |-
+          {{ if eq .Status "firing" }}🔴 <b>{{ .CommonLabels.alertname }}</b>
+          {{ range .Alerts.Firing }}{{ .Annotations.summary }}
+          {{ end }}{{ else }}✅ <b>{{ .CommonLabels.alertname }}</b> — прошло
+          {{ range .Alerts.Resolved }}{{ .Annotations.summary }}
+          {{ end }}{{ end }}
+        http_config:
+          # С web api.telegram.org не открывается — ходим через ssh-туннель на mtproto
+          proxy_url: socks5://tg-relay:1080
+    # Второй канал: если лёг mtproto, Telegram молчит, а почта доходит
+    email_configs:
+      - to: '${ALERT_EMAIL_TO}'
+        send_resolved: true

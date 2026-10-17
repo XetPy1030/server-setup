@@ -1,0 +1,13 @@
+# Сайты, которые blackbox проверяет по HTTPS (job sites). Включил хост в NPM — добавь сюда.
+# Prometheus перечитывает файл сам, перезапуск не нужен.
+- targets:
+    - https://obsidiantime.ru/
+    - https://minio.obsidiantime.ru/
+    - https://minio-console.obsidiantime.ru/
+    - https://xn--80adilt1bn3g.xn--p1ai/
+    - https://mendal-uve.ru/
+    - https://doubleb-shop.ru/
+    - https://api.doubleb-shop.ru/
+    - https://grafana.xetpy.ru/api/health
+    - https://portainer.xetpy.ru/
+    - https://npm.xetpy.ru/

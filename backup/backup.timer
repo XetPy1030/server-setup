@@ -1,0 +1,11 @@
+[Unit]
+Description=Ночной бэкап web
+
+[Timer]
+OnCalendar=*-*-* 04:00:00 Europe/Moscow
+RandomizedDelaySec=15m
+# Пропущенный запуск (сервер был выключен) — сразу после загрузки
+Persistent=true
+
+[Install]
+WantedBy=timers.target
