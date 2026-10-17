@@ -12,6 +12,9 @@ services:
     environment:
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:?set TELEGRAM_BOT_TOKEN in watchdog/.env}
       - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:?set TELEGRAM_CHAT_ID in watchdog/.env}
+      - SMTP_USER=${SMTP_USER:?set SMTP_USER in watchdog/.env}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:?set SMTP_PASSWORD in watchdog/.env}
+      - ALERT_EMAIL_TO=${ALERT_EMAIL_TO:?set ALERT_EMAIL_TO in watchdog/.env}
       - WATCH_URLS=https://obsidiantime.ru/ https://doubleb-shop.ru/ https://mendal-uve.ru/ https://grafana.xetpy.ru/api/health
     deploy:
       resources:

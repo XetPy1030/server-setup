@@ -120,6 +120,22 @@ services:
       start_period: 60s
       start_interval: 5s
 
+  # Состояние контейнеров для алертов — тот же скрипт, что на mtproto (host-metrics/)
+  docker-metrics:
+    image: docker:29.8.1-cli
+    container_name: docker-metrics
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "/docker-metrics.sh"]
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ../host-metrics/docker-metrics.sh:/docker-metrics.sh:ro
+      - ./node-exporter-textfile:/textfile
+    network_mode: none
+    deploy:
+      resources:
+        limits:
+          memory: 32M
+
   # Проверки сайтов по HTTPS и портов (prometheus-targets/), docs/alerts.md
   blackbox-exporter:
     image: prom/blackbox-exporter:v0.28.0

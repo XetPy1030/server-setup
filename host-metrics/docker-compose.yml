@@ -1,0 +1,39 @@
+# Метрики хоста для Prometheus на web: node-exporter и состояние контейнеров.
+# На web то же самое живёт в monitoring/. Prometheus ходит сюда через tg-relay (ssh -D
+# на этот сервер), поэтому порт открыт только на 127.0.0.1.
+services:
+  node-exporter:
+    image: prom/node-exporter:v1.10.2
+    container_name: node-exporter
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:9100:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+      - ./textfile:/textfile:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.ignored-mount-points=^/(sys|proc|dev|host|etc)($$|/)'
+      - '--collector.textfile.directory=/textfile'
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+
+  docker-metrics:
+    image: docker:29.8.1-cli
+    container_name: docker-metrics
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "/docker-metrics.sh"]
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./docker-metrics.sh:/docker-metrics.sh:ro
+      - ./textfile:/textfile
+    network_mode: none
+    deploy:
+      resources:
+        limits:
+          memory: 32M

@@ -5,16 +5,20 @@ global:
   smtp_auth_username: '${SMTP_USER}'
   smtp_auth_password: '${SMTP_PASSWORD}'
 
+# Всё — в Telegram; severity: critical — ещё и на почту
 route:
-  receiver: telegram-and-email
+  receiver: telegram
   group_by: [alertname]
   group_wait: 30s
   group_interval: 5m
   repeat_interval: 6h
+  routes:
+    - matchers: ['severity="critical"']
+      receiver: telegram-and-email
 
 receivers:
-  - name: telegram-and-email
-    telegram_configs:
+  - name: telegram
+    telegram_configs: &telegram
       - bot_token: '${TELEGRAM_BOT_TOKEN}'
         chat_id: ${TELEGRAM_CHAT_ID}
         parse_mode: HTML
@@ -27,6 +31,9 @@ receivers:
         http_config:
           # С web api.telegram.org не открывается — ходим через ssh-туннель на mtproto
           proxy_url: socks5://tg-relay:1080
+
+  - name: telegram-and-email
+    telegram_configs: *telegram
     # Второй канал: если лёг mtproto, Telegram молчит, а почта доходит
     email_configs:
       - to: '${ALERT_EMAIL_TO}'

@@ -1,22 +1,33 @@
-# Алерты. Тексты (summary) уходят в Telegram и на почту — см. ../alertmanager.yml.
+# Алерты. Тексты (summary) уходят в Telegram — все; severity: critical — ещё и на почту
+# (маршруты — ../alertmanager.yml). Метка host: web или mtproto.
 groups:
   - name: sites
     rules:
       - alert: SiteDown
         expr: probe_success{job="sites"} == 0
         for: 2m
+        labels: {severity: critical}
         annotations:
           summary: '{{ $labels.instance }} не отвечает'
 
       - alert: CertExpiresSoon
         expr: probe_ssl_earliest_cert_expiry{job="sites"} - time() < 14 * 86400
         for: 1h
+        labels: {severity: warning}
+        annotations:
+          summary: 'Сертификат {{ $labels.instance }} истекает через {{ $value | humanizeDuration }} — NPM не продлил его сам'
+
+      - alert: CertExpiresCritical
+        expr: probe_ssl_earliest_cert_expiry{job="sites"} - time() < 3 * 86400
+        for: 1h
+        labels: {severity: critical}
         annotations:
           summary: 'Сертификат {{ $labels.instance }} истекает через {{ $value | humanizeDuration }}'
 
       - alert: MtprotoUnreachable
         expr: probe_success{job="mtproto"} == 0
         for: 5m
+        labels: {severity: critical}
         annotations:
           summary: 'Прокси mtproto не принимает соединения (проверка с web). Telegram-уведомления тоже могут не доходить'
 
@@ -25,38 +36,92 @@ groups:
       - alert: TelegramRelayDown
         expr: probe_success{job="tg-relay"} == 0
         for: 5m
+        labels: {severity: critical}
         annotations:
-          summary: 'Нет ssh-туннеля до Telegram через mtproto — уведомления идут только на почту'
+          summary: 'Нет ssh-туннеля до mtproto — Telegram-уведомления не уходят, метрик mtproto нет'
 
       - alert: NotificationsFailing
         expr: increase(alertmanager_notifications_failed_total[15m]) > 0
+        labels: {severity: critical}
         annotations:
-          summary: 'Не доходят уведомления через {{ $labels.integration }} — смотри docker logs alertmanager'
+          summary: 'Не доходят уведомления через {{ $labels.integration }} — на web: docker logs alertmanager'
 
   - name: backup
     rules:
       - alert: BackupStale
         expr: time() - backup_last_success_timestamp_seconds > 26 * 3600 or absent(backup_last_success_timestamp_seconds)
         for: 30m
+        labels: {severity: warning}
         annotations:
           summary: 'Последний успешный бэкап web — больше 26 часов назад. На web: systemctl status backup.service'
 
-  - name: web
+  - name: hosts
     rules:
       - alert: TargetDown
         expr: up == 0
         for: 5m
+        labels: {severity: warning}
         annotations:
           summary: 'Prometheus не может опросить {{ $labels.job }} ({{ $labels.instance }})'
 
       - alert: DiskSpaceLow
         expr: node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"} < 0.15
         for: 10m
+        labels: {severity: warning}
         annotations:
-          summary: 'web: на диске свободно {{ $value | humanizePercentage }}'
+          summary: '{{ $labels.host }}: на диске свободно {{ $value | humanizePercentage }}'
+
+      - alert: DiskSpaceCritical
+        expr: node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"} < 0.05
+        for: 5m
+        labels: {severity: critical}
+        annotations:
+          summary: '{{ $labels.host }}: диск почти заполнен — свободно {{ $value | humanizePercentage }}'
 
       - alert: MemoryLow
         expr: node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes < 0.10
         for: 10m
+        labels: {severity: warning}
         annotations:
-          summary: 'web: свободно {{ $value | humanizePercentage }} памяти'
+          summary: '{{ $labels.host }}: свободно {{ $value | humanizePercentage }} памяти'
+
+      - alert: OOMKill
+        expr: increase(node_vmstat_oom_kill[10m]) > 0
+        labels: {severity: warning}
+        annotations:
+          summary: '{{ $labels.host }}: ядро убило процесс из-за нехватки памяти'
+
+      - alert: HighLoad
+        expr: node_load15 / on (host) count by (host) (node_cpu_seconds_total{mode="idle"}) > 1.5
+        for: 15m
+        labels: {severity: warning}
+        annotations:
+          summary: '{{ $labels.host }}: нагрузка {{ $value | printf "%.1f" }} на ядро уже 15 минут'
+
+      - alert: HostRebooted
+        expr: node_time_seconds - node_boot_time_seconds < 600
+        labels: {severity: warning}
+        annotations:
+          summary: '{{ $labels.host }} перезагрузился'
+
+  - name: containers
+    rules:
+      - alert: ContainerDown
+        expr: docker_container_up{restart_policy!="no"} == 0
+        for: 3m
+        labels: {severity: warning}
+        annotations:
+          summary: '{{ $labels.host }}: контейнер {{ $labels.name }} не запущен'
+
+      - alert: ContainerUnhealthy
+        expr: docker_container_healthy == 0
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: '{{ $labels.host }}: контейнер {{ $labels.name }} unhealthy'
+
+      - alert: ContainerRestarting
+        expr: increase(docker_container_restarts_total[15m]) > 2
+        labels: {severity: warning}
+        annotations:
+          summary: '{{ $labels.host }}: контейнер {{ $labels.name }} перезапускается по кругу'

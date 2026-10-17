@@ -9,6 +9,7 @@ monitoring/logs/
 monitoring/tg-relay-secrets/
 monitoring/prometheus-targets/mtproto.yml
 monitoring/node-exporter-textfile/
+host-metrics/textfile/
 backup/staging/
 backup/rclone/
 vpn/wireguard/

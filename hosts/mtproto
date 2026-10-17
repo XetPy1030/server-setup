@@ -1,3 +1,4 @@
-# mtproto — Telegram MTProto proxy (fake TLS) и обратная проверка web
+# mtproto — Telegram MTProto proxy (fake TLS), обратная проверка web и метрики хоста
 mtproto
 watchdog
+host-metrics

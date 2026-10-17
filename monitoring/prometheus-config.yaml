@@ -19,9 +19,21 @@ scrape_configs:
     static_configs:
       - targets: ['alertmanager:9093']
 
+  # Метрики хостов. Метка host — в текстах алертов.
   - job_name: node-exporter
     static_configs:
       - targets: ['node-exporter:9100']
+        labels:
+          host: web
+
+  # node-exporter на mtproto слушает только 127.0.0.1 — ходим через ssh-туннель tg-relay
+  # (на mtproto ключ туннеля разрешает 127.0.0.1:9100 и api.telegram.org:443).
+  - job_name: node-exporter-mtproto
+    proxy_url: socks5://tg-relay:1080
+    static_configs:
+      - targets: ['127.0.0.1:9100']
+        labels:
+          host: mtproto
 
   # Django obsidiantime — пока через публичный адрес (docs/roadmap.md, этап 4)
   - job_name: django
