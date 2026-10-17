@@ -63,11 +63,11 @@ mtproto
 ```sh
 sv web
 docker exec alertmanager amtool --alertmanager.url=http://localhost:9093 alert add \
-    alertname=Test --annotation=summary="Проверка оповещений" \
+    alertname=Test --annotation='summary="Проверка оповещений"' \
     --end="$(date -u -d '+2 min' +%Y-%m-%dT%H:%M:%SZ)"
 ```
 
-Через ~30 секунд придёт 🔴 в Telegram и письмо, через пару минут — ✅. Если нет: `docker logs alertmanager` и `docker logs tg-relay`.
+Через ~30 секунд придёт 🔴 в Telegram и письмо, через несколько минут — ✅. Сколько ушло и сколько не дошло — `curl -s localhost:9093/metrics | grep alertmanager_notifications`. Если не дошло: `docker logs alertmanager` и `docker logs tg-relay`.
 
 ## Туннель до Telegram: как настроен
 

@@ -1,59 +1,71 @@
 # Бэкапы web → Яндекс Диск
 
-Статус: **план** (этап 2 в [roadmap.md](roadmap.md)). После реализации здесь будут точные команды восстановления.
+Статус: **код готов, ждёт токен Яндекса** (этап 2 в [roadmap.md](roadmap.md)). С 2026-10-11 Яндекс отвечает `410 Gone` на запросы к файлам со встроенным OAuth-ключом rclone ([rclone#10067](https://github.com/rclone/rclone/issues/10067)). Работает со своим OAuth-приложением — см. «Подключение Яндекс Диска».
 
 ## Что копируем
 
 | Что | Где на сервере | Как |
 |-----|----------------|-----|
-| Postgres obsidiantime | контейнер `obsidiantime-db` | `pg_dump` |
-| Postgres doubleb-shop | контейнер `doubleb-db` | `pg_dump` |
-| Файлы MinIO obsidiantime | том `obsidiantime_minio_data` | файлы |
-| NPM: хосты, сертификаты | `nginx/data`, `nginx/letsencrypt` | `database.sqlite` — через sqlite backup, остальное файлами |
-| Grafana | том `loki_grafana-storage` | `grafana.db` — через sqlite backup |
-| Portainer | `portainer/data` | файлы |
-| Секреты | все `.env` в `server-setup/` и `/root/projects/*/` | файлы |
+| Postgres obsidiantime | контейнер `obsidiantime-db` | `pg_dump` → `staging/obsidiantime.sql` |
+| Postgres doubleb-shop | контейнер `doubleb-db` | `pg_dump` → `staging/doubleb.sql` |
+| NPM: база хостов | `nginx/data/database.sqlite` | sqlite backup API → `staging/npm.sqlite` |
+| Grafana | том `loki_grafana-storage` | `grafana.db` — sqlite backup API, остальное файлами |
+| Весь `server-setup/` | конфиги, сертификаты NPM, Portainer, `.env`, ключ tg-relay | файлами, без логов и без `backup/rclone` |
+| Файлы MinIO и media obsidiantime | тома `obsidiantime_minio_data`, `obsidiantime_media_volume` | файлами |
+| `.env` сайтов | `/root/projects/*/.env` (до 3 уровней) | файлами |
 
-Не копируем: данные Loki и Prometheus (логи и метрики, ~1.5 ГБ, восстанавливать не нужно), образы (собираются из реп), код (он в git).
-
-Весь набор — около 200 МБ, restic после первой копии отправляет только изменения.
+Не копируем: Loki и Prometheus (логи и метрики, ~1.5 ГБ, восстанавливать не нужно), образы (собираются из реп), код сайтов (он в git; незакоммиченное на сервере пропадёт).
 
 ## Как устроено
 
-- **restic** — шифрует, дедуплицирует, хранит снимки по расписанию.
-- **rclone** — даёт restic доступ к Яндекс Диску через его API (WebDAV у Яндекса сильно режут по скорости).
-- Оба — официальные образы с зафиксированными тегами, запускаются через `docker run --rm`, на хост ничего не ставится.
+- [backup/backup.sh](../backup/backup.sh) — делает дампы в `backup/staging/` и запускает restic в контейнере (образ из [backup/Dockerfile](../backup/Dockerfile): `restic/restic` + бинарник rclone). Источники смонтированы только на чтение.
+- Репозиторий restic — `server-backups/web` на Яндекс Диске (`RESTIC_REPOSITORY=rclone:yadisk:server-backups/web`). Шифрование, дедупликация, сжатие — средствами restic.
+- Хранение: 7 ежедневных, 4 недельных, 6 месячных снимков (`restic forget --prune`). По воскресеньям — `restic check`.
+- После успеха пишет время в `monitoring/node-exporter-textfile/backup.prom`. Алерт **BackupStale** — если успешного бэкапа нет 26 часов ([alerts.md](alerts.md)).
+- Расписание — systemd-таймер `backup.timer`, 04:00 по Москве; пропущенный запуск выполняется после загрузки. Ставится один раз: `backup/install.sh`.
 
-Каждую ночь в 04:00 systemd-таймер на web запускает `backup/backup.sh`:
+Только на сервере (в `.gitignore`):
 
-1. `pg_dump` обеих баз и консистентные копии sqlite-файлов в `backup/staging/`.
-2. `restic backup` — staging и каталоги данных из таблицы → папка `server-backups/web` на Яндекс Диске.
-3. `restic forget --prune` — оставить 7 ежедневных, 4 недельных и 6 месячных снимков.
-4. По воскресеньям — `restic check`.
-5. Время успешного завершения пишется в метрику для node-exporter, по ней алерт «бэкапа не было больше 26 часов» ([alerts.md](alerts.md)).
+- `backup/.env` — `RESTIC_PASSWORD`. **Копию — в менеджер паролей:** без него снимки не расшифровать.
+- `backup/rclone/rclone.conf` — доступ к Яндекс Диску (копия конфига с Mac).
 
-Только на сервере, в `.gitignore`:
+## Команды
 
-- `backup/.env` — `RESTIC_PASSWORD`;
-- `backup/rclone.conf` — токен Яндекс Диска.
+```sh
+sv web
+cd ~/server-setup
+systemctl start backup.service          # бэкап сейчас
+journalctl -u backup.service -n 50      # лог последнего запуска
+systemctl list-timers backup.timer      # когда следующий
+backup/backup.sh snapshots              # любые аргументы уходят в restic
+```
 
-## Что нужно от тебя
+Восстановление — команды допишу после пробного восстановления на первом снимке.
 
-1. На Mac:
+## Подключение Яндекс Диска
+
+Нужно своё OAuth-приложение: встроенное в rclone Яндекс заблокировал.
+
+1. [oauth.yandex.ru](https://oauth.yandex.ru/) → «Создать приложение». Если попросит верификацию через Госуслуги — можно пропустить, токен всё равно выдаётся.
+2. Платформа «Веб-сервисы», Redirect URI: `http://127.0.0.1:53682/`.
+3. Доступы: «Доступ к информации о Диске», «Чтение всего Диска», «Запись в любом месте на Диске».
+4. Создать, скопировать ClientID и Client secret.
+5. На Mac:
    ```sh
-   brew install rclone
-   rclone config create yadisk yandex
+   rclone config update yadisk client_id=<ClientID> client_secret=<Client secret>
+   rclone config reconnect yadisk:      # откроется браузер — разрешить доступ
+   rclone lsd yadisk:server-backups     # должно отработать без 410
    ```
-   Откроется браузер — войти в аккаунт Яндекса, где будут лежать копии. Конфиг на сервер я перенесу сам, не выводя токен.
-2. Пароль restic сгенерируется на сервере. Скопируй его в менеджер паролей:
+6. Перенести конфиг на web и запустить первый бэкап:
    ```sh
-   sv web
-   cat ~/server-setup/backup/.env
+   scp ~/.config/rclone/rclone.conf web:server-setup/backup/rclone/rclone.conf
+   ssh web systemctl start backup.service
    ```
-   Если сервер умрёт, а пароля нигде больше нет, копии бесполезны.
 
-Яндекс Диск синхронизируется на Mac, так что зашифрованный репозиторий скачается и туда — это третья копия. Если место на Mac жалко, исключи папку `server-backups` в настройках клиента Диска.
+Токен rclone даёт доступ ко всему Диску. Аккуратнее завести отдельный аккаунт Яндекса только под бэкапы: тогда взлом web не открывает личный Диск.
+
+Яндекс Диск синхронизируется на Mac, так что зашифрованный репозиторий скачается и туда — это третья копия. Если место жалко, исключи папку `server-backups` в настройках клиента Диска.
 
 ## mtproto
 
-Копировать нечего, кроме секрета прокси. Он лежит в `mtproto/.env` на сервере — продублируй его в менеджер паролей.
+Копировать нечего, кроме секрета прокси в `mtproto/.env` — продублируй его в менеджер паролей.
