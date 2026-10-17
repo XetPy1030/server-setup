@@ -7,7 +7,8 @@
 #             (сам systemd берёт 10% диска — на 5-гиговом VPS это треть свободного места)
 #   docker    ротация логов контейнеров и live-restore; перезапускает dockerd,
 #             контейнеры при этом не останавливаются
-#   upgrades  обновления безопасности раз в сутки (unattended-upgrades), без перезагрузки
+#   upgrades  автообновления раз в сутки (unattended-upgrades), без перезагрузки и без Docker;
+#             что ставится — см. 20auto-upgrades
 set -eu
 cd "$(dirname "$0")"
 

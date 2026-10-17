@@ -1,4 +1,6 @@
-// Раз в сутки обновлять списки пакетов и ставить обновления безопасности.
-// Что именно ставится — /etc/apt/apt.conf.d/50unattended-upgrades (по умолчанию только security).
+// Раз в сутки обновлять списки пакетов и ставить обновления.
+// Что именно ставится — /etc/apt/apt.conf.d/50unattended-upgrades. По умолчанию:
+// Ubuntu — только security, Debian — security и исправления stable (точечные релизы).
+// Пакеты из сторонних репозиториев (Docker) не трогаются.
 APT::Periodic::Update-Package-Lists "1";
 APT::Periodic::Unattended-Upgrade "1";
