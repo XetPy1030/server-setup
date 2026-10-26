@@ -10,6 +10,7 @@
 | Postgres doubleb-shop | контейнер `doubleb-db` | `pg_dump` → `staging/doubleb.sql` |
 | NPM: база хостов | `nginx/data/database.sqlite` | sqlite backup API → `staging/npm.sqlite` |
 | Grafana | том `loki_grafana-storage` | `grafana.db` — sqlite backup API → `staging/grafana.db`, остальное файлами |
+| CouchDB: заметки Obsidian (зашифрованы на устройствах) | `couchdb/data`, `couchdb/etc` | файлами, в составе `server-setup/`: файлы CouchDB только дописываются, копия на ходу целая. Восстановление — [obsidian-sync.md](obsidian-sync.md) |
 | Весь `server-setup/` | конфиги, сертификаты NPM, Portainer, `.env`, ключ tg-relay | файлами, без логов и без `backup/rclone` |
 | Файлы MinIO и media obsidiantime | тома `obsidiantime_minio_data`, `obsidiantime_media_volume` | файлами |
 | `.env` сайтов | `/root/projects/*/.env` (до 3 уровней) | файлами |
@@ -75,7 +76,7 @@ backup/backup.sh dump latest /root/server-setup/backup/staging/npm.sqlite >/root
 
 1. Склонировать репу, `host/install.sh` (см. README).
 2. `backup/rclone/rclone.conf` — с Mac, `backup/.env` — пароль restic из менеджера паролей.
-3. `backup/backup.sh restore latest --target /restore`, затем из `/root/restore/root/server-setup/` скопировать в `~/server-setup/` то, чего нет в git: `nginx/data`, `nginx/letsencrypt`, `portainer/data`, все `.env`, `monitoring/tg-relay-secrets`, `monitoring/prometheus-targets/mtproto.yml`. NPM: `database.sqlite` — из `staging/npm.sqlite`.
+3. `backup/backup.sh restore latest --target /restore`, затем из `/root/restore/root/server-setup/` скопировать в `~/server-setup/` то, чего нет в git: `nginx/data`, `nginx/letsencrypt`, `portainer/data`, `couchdb/data`, `couchdb/etc`, все `.env`, `monitoring/tg-relay-secrets`, `monitoring/prometheus-targets/mtproto.yml`. NPM: `database.sqlite` — из `staging/npm.sqlite`.
 4. `./sv web deploy` с Mac.
 5. Сайты: склонировать репы в `/root/projects`, вернуть `.env` из снимка, поднять, загрузить дампы баз. MinIO и Grafana — содержимое томов из снимка в `/var/lib/docker/volumes/<том>/_data` (Grafana — с `grafana.db` из `staging/`).
 
