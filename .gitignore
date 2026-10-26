@@ -12,6 +12,9 @@ monitoring/node-exporter-textfile/
 host-metrics/textfile/
 backup/staging/
 backup/rclone/
+couchdb/data/
+couchdb/etc/
+couchdb/.livesync.ini.applied
 vpn/wireguard/
 vpn-xray/db/
 vpn-xray/cert/

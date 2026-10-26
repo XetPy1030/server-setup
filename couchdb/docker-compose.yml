@@ -1,0 +1,36 @@
+# CouchDB для синхронизации Obsidian (плагин Self-hosted LiveSync) — docs/obsidian-sync.md
+services:
+  couchdb:
+    image: couchdb:3.5.3
+    container_name: couchdb
+    restart: unless-stopped
+    environment:
+      # Админ CouchDB, им же ходит LiveSync: первое устройство пересоздаёт базу, а это может только админ.
+      # Создаётся при первом старте; сменить пароль — см. docs/obsidian-sync.md
+      COUCHDB_USER: ${COUCHDB_USER:?нет couchdb/.env — см. .env.example}
+      COUCHDB_PASSWORD: ${COUCHDB_PASSWORD:?нет couchdb/.env — см. .env.example}
+    ports:
+      # Снаружи через NPM (obsidian.xetpy.ru → http://couchdb:5984), порт — только для SSH-туннеля
+      - "127.0.0.1:5984:5984"
+    volumes:
+      - ./data:/opt/couchdb/data
+      # Сюда CouchDB сам пишет docker.ini: хеш пароля админа, uuid сервера, ключ сессий.
+      # uuid должен пережить пересоздание контейнера — по нему клиенты узнают сервер.
+      - ./etc:/opt/couchdb/etc/local.d
+      # Настройки под LiveSync. local.d занят файлами выше, поэтому default.d;
+      # после правки контейнер перезапускает reload.sh
+      - ./livesync.ini:/opt/couchdb/etc/default.d/20-livesync.ini:ro
+    healthcheck:
+      # /_up отвечает без пароля (require_valid_user_except_for_up), всё остальное — только с паролем
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://127.0.0.1:5984/_up"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+      start_interval: 2s
+    networks:
+      - web-network
+
+networks:
+  web-network:
+    external: true
