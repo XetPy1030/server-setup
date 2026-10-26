@@ -11,3 +11,5 @@
     - https://grafana.xetpy.ru/api/health
     - https://portainer.xetpy.ru/
     - https://npm.xetpy.ru/
+    # CouchDB для Obsidian: без логина отвечает только /_up
+    - https://obsidian.xetpy.ru/_up
