@@ -5,6 +5,11 @@ services:
     networks:
       - web-network  # та же самая сеть!
 
+# В web-network имя сервиса (db, redis, minio…) — общее для всех проектов: два сервиса db
+# из разных проектов резолвятся оба, и приложение попадает то в свою базу, то в чужую.
+# Поэтому к соседям по проекту обращаться по container_name (DB_HOST=myapp-db), а базу
+# лучше вообще не подключать к web-network — ей хватит сети проекта (default).
+
 networks:
   web-network:
     external: true

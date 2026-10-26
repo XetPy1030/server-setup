@@ -25,6 +25,10 @@
 
 На графиках красными метками отмечено время, когда срабатывали алерты.
 
+## Другие дашборды
+
+- **obsidiantime** ([obsidiantime.json](../monitoring/grafana-dashboards/obsidiantime.json)) — Django сайта obsidiantime.ru: запросы в секунду, доля 5xx, время ответа, страницы за период. Метрики со всех воркеров gunicorn собираются через multiprocess-режим `prometheus_client` (`PROMETHEUS_MULTIPROC_DIR` в `docker-compose.prod.yml` сайта). Без него каждый воркер считал своё, Prometheus попадал в случайный и графики были бессмысленными.
+
 ## Правки
 
 Дашборд подключён через provisioning ([monitoring/grafana-provisioning/dashboards/](../monitoring/grafana-provisioning/dashboards/)), сохранить его из интерфейса Grafana нельзя. Источник правды — JSON в репе:
