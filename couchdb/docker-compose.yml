@@ -18,8 +18,9 @@ services:
       # uuid должен пережить пересоздание контейнера — по нему клиенты узнают сервер.
       - ./etc:/opt/couchdb/etc/local.d
       # Настройки под LiveSync. local.d занят файлами выше, поэтому default.d;
-      # после правки контейнер перезапускает reload.sh
-      - ./livesync.ini:/opt/couchdb/etc/default.d/20-livesync.ini:ro
+      # после правки контейнер перезапускает reload.sh.
+      # Без :ro — entrypoint образа делает chown всему в /opt/couchdb и на read-only файле падает
+      - ./livesync.ini:/opt/couchdb/etc/default.d/20-livesync.ini
     healthcheck:
       # /_up отвечает без пароля (require_valid_user_except_for_up), всё остальное — только с паролем
       test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://127.0.0.1:5984/_up"]
