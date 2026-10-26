@@ -60,6 +60,8 @@ services:
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:?set GRAFANA_ADMIN_PASSWORD in monitoring/.env}
       - GF_SERVER_ROOT_URL=https://grafana.xetpy.ru
       - GF_USERS_ALLOW_SIGN_UP=false
+      # Главная страница — дашборд «Серверы» (grafana-dashboards/servers.json)
+      - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/var/lib/grafana/dashboards/servers.json
       - TZ=Europe/Moscow
     restart: unless-stopped
     depends_on:

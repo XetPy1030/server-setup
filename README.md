@@ -24,7 +24,7 @@ Host web
 |------|--------|---------|---------|------------------|
 | web (xetpy.ru, РФ) | [nginx](nginx/) | Nginx Proxy Manager | 80, 443; админка npm.xetpy.ru | 81 |
 | | [portainer](portainer/) | Portainer | portainer.xetpy.ru | 9443 |
-| | [monitoring](monitoring/) | Grafana, Loki, Promtail, Prometheus, node-exporter, blackbox, Alertmanager, tg-relay — [оповещения](docs/alerts.md) | grafana.xetpy.ru | 8512, 3100, 9090, 9093, 9100 |
+| | [monitoring](monitoring/) | Grafana, Loki, Promtail, Prometheus, node-exporter, blackbox, Alertmanager, tg-relay — [оповещения](docs/alerts.md), [дашборд](docs/dashboard.md) | grafana.xetpy.ru | 8512, 3100, 9090, 9093, 9100 |
 | — | [vpn](vpn/) | WireGuard (wg-easy) | 51820/udp, панель 51821 | |
 | — | [vpn-xray](vpn-xray/) | 3X-UI, VLESS + Reality | 443, панель | |
 | mtproto | [mtproto](mtproto/) | Telegram MTProto proxy, fake TLS | 443 | |
@@ -48,6 +48,7 @@ vpn и vpn-xray сейчас нигде не развёрнуты — конфи
 - [docs/roadmap.md](docs/roadmap.md) — план работ по этапам: что сделано, что дальше, что нужно от тебя.
 - [docs/backup.md](docs/backup.md) — бэкапы web на Яндекс Диск.
 - [docs/alerts.md](docs/alerts.md) — оповещения в Telegram и на почту.
+- [docs/dashboard.md](docs/dashboard.md) — дашборд «Серверы» в Grafana: всё ли в порядке.
 - [mtproto/README.md](mtproto/README.md), [vpn-xray/README.md](vpn-xray/README.md) — заметки по отдельным сервисам.
 
 ## Новый сервер

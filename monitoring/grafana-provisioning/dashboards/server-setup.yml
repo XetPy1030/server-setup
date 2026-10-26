@@ -1,0 +1,13 @@
+# Дашборды из grafana-dashboards/ (в контейнере /var/lib/grafana/dashboards).
+# Grafana сама перечитывает папку, после git pull перезапуск не нужен.
+# В интерфейсе их не сохранить: правки — в JSON в репе, см. docs/dashboard.md.
+apiVersion: 1
+providers:
+  - name: server-setup
+    type: file
+    folder: ''
+    disableDeletion: true
+    allowUiUpdates: false
+    updateIntervalSeconds: 30
+    options:
+      path: /var/lib/grafana/dashboards
